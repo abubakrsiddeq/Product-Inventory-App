@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STOCKR — Inventory System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@300;400;500;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0e11;
+      --surface: #14161b;
+      --surface2: #1c1f27;
+      --border: #2a2d38;
+      --accent: #e8ff47;
+      --accent2: #47b8ff;
+      --danger: #ff4757;
+      --success: #2ed573;
+      --text: #e8eaf0;
+      --muted: #6b7080;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      font-weight: 400;
+      min-height: 100vh;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    .mono { font-family: 'Space Mono', monospace; }
+    .condensed { font-family: 'Barlow Condensed', sans-serif; }
+
+    /* Header */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .logo {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+    }
+
+    .logo span {
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--accent);
+      color: #0d0e11;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.5rem 1.25rem;
+      font-size: 0.85rem;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    }
+
+    .btn-primary:hover {
+      background: #f5ff70;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(232, 255, 71, 0.3);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.45rem 1rem;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--muted);
+      color: var(--text);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.75rem;
+      border: 1px solid rgba(255, 71, 87, 0.3);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 71, 87, 0.12);
+      border-color: var(--danger);
+    }
+
+    .btn-edit {
+      background: transparent;
+      color: var(--accent2);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.75rem;
+      border: 1px solid rgba(71, 184, 255, 0.3);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-edit:hover {
+      background: rgba(71, 184, 255, 0.1);
+      border-color: var(--accent2);
+    }
+
+    /* Product Card */
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .product-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      transition: background 0.2s;
+    }
+
+    .product-card:hover {
+      border-color: rgba(232, 255, 71, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .product-card:hover::before {
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .product-card.low-price {
+      border-color: rgba(46, 213, 115, 0.25);
+    }
+
+    .product-card.low-price::before {
+      background: linear-gradient(90deg, transparent, var(--success), transparent);
+    }
+
+    .low-price-badge {
+      background: rgba(46, 213, 115, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(46, 213, 115, 0.3);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      padding: 0.15rem 0.4rem;
+      letter-spacing: 0.05em;
+    }
+
+    /* Category badge */
+    .category-badge {
+      background: var(--surface2);
+      color: var(--muted);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      border: 1px solid var(--border);
+    }
+
+    /* Price tag */
+    .price-tag {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* Form */
+    .form-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+    }
+
+    .form-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      padding: 0.6rem 0.9rem;
+      width: 100%;
+      font-size: 0.9rem;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: rgba(232, 255, 71, 0.5);
+      background: #1e2028;
+    }
+
+    .form-input::placeholder { color: var(--muted); }
+
+    .form-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    select.form-input option {
+      background: var(--surface2);
+    }
+
+    /* Filter bar */
+    .filter-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .filter-pill {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.85rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .filter-pill:hover, .filter-pill.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(232, 255, 71, 0.06);
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 100;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1.5rem;
+      border-left: 3px solid;
+      backdrop-filter: blur(8px);
+      animation: slideIn 0.3s ease;
+      max-width: 320px;
+    }
+
+    .toast.success {
+      background: rgba(46, 213, 115, 0.1);
+      border-color: var(--success);
+      color: var(--success);
+      border: 1px solid rgba(46, 213, 115, 0.3);
+      border-left: 3px solid var(--success);
+    }
+
+    .toast.error {
+      background: rgba(255, 71, 87, 0.1);
+      border-color: var(--danger);
+      color: var(--danger);
+      border: 1px solid rgba(255, 71, 87, 0.3);
+      border-left: 3px solid var(--danger);
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--accent2);
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: modalIn 0.25s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.96) translateY(10px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* Image container */
+    .img-container {
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 160px;
+      overflow: hidden;
+    }
+
+    .img-container img {
+      max-height: 130px;
+      max-width: 100%;
+      object-fit: contain;
+      padding: 0.5rem;
+      transition: transform 0.3s;
+    }
+
+    .product-card:hover .img-container img {
+      transform: scale(1.05);
+    }
+
+    /* Stats bar */
+    .stat-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+
+    /* Section divider */
+    .section-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* Card enter animation */
+    .card-enter {
+      animation: cardIn 0.35s ease forwards;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="relative z-10">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="flex items-center gap-4">
+      <div class="logo">STOCK<span>R</span></div>
+      <span class="mono text-xs" style="color: var(--muted);">/ inventory mgmt</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <div id="headerStats" class="hidden sm:flex items-center gap-2 mono text-xs" style="color: var(--muted);">
+        <span id="statCount">—</span> products
+      </div>
+      <button class="btn-primary" onclick="openAddModal()">+ ADD PRODUCT</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="max-w-screen-xl mx-auto px-4 py-8 relative z-10">
+
+    <!-- Stats -->
+    <div id="statsBar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 hidden">
+      <div class="stat-chip">
+        <span class="condensed text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Total Products</span>
+        <span class="mono font-bold text-xl" style="color:var(--accent)" id="s-total">—</span>
+      </div>
+      <div class="stat-chip">
+        <span class="condensed text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Avg. Price</span>
+        <span class="mono font-bold text-xl" style="color:var(--accent2)" id="s-avg">—</span>
+      </div>
+      <div class="stat-chip">
+        <span class="condensed text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Low Price (&lt;$20)</span>
+        <span class="mono font-bold text-xl" style="color:var(--success)" id="s-low">—</span>
+      </div>
+      <div class="stat-chip">
+        <span class="condensed text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Categories</span>
+        <span class="mono font-bold text-xl" style="color:var(--text)" id="s-cats">—</span>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="mb-6 flex flex-col gap-3">
+      <span class="section-label w-full sm:w-auto" style="min-width:100px">Filter</span>
+      <div class="filter-bar flex-1 flex flex-col sm:flex-row sm:items-center gap-2">
+        <label for="categoryFilter" class="condensed text-xs font-semibold uppercase tracking-widest" style="color:var(--muted)">Category</label>
+        <select id="categoryFilter" class="form-input w-full sm:w-64" onchange="filterProducts(this.value, this)">
+          <option value="all">All</option>
+          <option value="electronics">Electronics</option>
+          <option value="jewelery">Jewelery</option>
+          <option value="men's clothing">Men's Clothing</option>
+          <option value="women's clothing">Women's Clothing</option>
+        </select>
+      </div>
+      <div class="filter-bar flex-1 flex flex-wrap gap-2">
+        <button class="filter-pill active" data-cat="all" onclick="filterProducts('all', this)">All</button>
+        <button class="filter-pill" data-cat="electronics" onclick="filterProducts('electronics', this)">Electronics</button>
+        <button class="filter-pill" data-cat="jewelery" onclick="filterProducts('jewelery', this)">Jewelery</button>
+        <button class="filter-pill" data-cat="men's clothing" onclick="filterProducts(`men's clothing`, this)">Men's</button>
+        <button class="filter-pill" data-cat="women's clothing" onclick="filterProducts(`women's clothing`, this)">Women's</button>
+      </div>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="section-label mb-5">
+      Products
+      <span id="productCountLabel" class="mono text-xs" style="color:var(--accent)"></span>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingState" class="flex flex-col items-center justify-center py-24 gap-4">
+      <div class="spinner"></div>
+      <span class="condensed text-sm uppercase tracking-widest" style="color:var(--muted)">Fetching inventory...</span>
+    </div>
+
+    <!-- Error -->
+    <div id="errorState" class="hidden flex flex-col items-center justify-center py-24 gap-3">
+      <div class="mono text-4xl" style="color:var(--danger)">ERR</div>
+      <p class="condensed text-sm uppercase tracking-widest" style="color:var(--muted)" id="errorMsg">Failed to load products</p>
+      <button class="btn-secondary mt-2" onclick="init()">↻ RETRY</button>
+    </div>
+
+    <!-- Empty -->
+    <div id="emptyState" class="hidden flex flex-col items-center justify-center py-24 gap-3">
+      <div class="condensed text-5xl font-bold" style="color:var(--border)">EMPTY</div>
+      <p class="condensed text-sm uppercase tracking-widest" style="color:var(--muted)">No products in this category</p>
+    </div>
+
+    <!-- Grid -->
+    <div id="productsGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+  </main>
+
+  <!-- ADD/EDIT MODAL -->
+  <div id="productModal" class="modal-overlay hidden" onclick="handleOverlayClick(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between p-5 border-b" style="border-color:var(--border)">
+        <div class="condensed font-bold text-lg uppercase tracking-widest" id="modalTitle">Add Product</div>
+        <button onclick="closeModal()" class="mono text-xl" style="color:var(--muted); background:none; border:none; cursor:pointer; line-height:1;">✕</button>
+      </div>
+      <div class="p-5">
+        <form id="productForm" onsubmit="handleFormSubmit(event)">
+          <input type="hidden" id="editId" value="" />
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="form-label">Title *</label>
+              <input class="form-input" type="text" id="f-title" placeholder="Product name" required />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="form-label">Price ($) *</label>
+                <input class="form-input" type="number" id="f-price" placeholder="0.00" step="0.01" min="0" required />
+              </div>
+              <div>
+                <label class="form-label">Category *</label>
+                <select class="form-input" id="f-category" required>
+                  <option value="" disabled selected>Select...</option>
+                  <option value="electronics">Electronics</option>
+                  <option value="jewelery">Jewelery</option>
+                  <option value="men's clothing">Men's Clothing</option>
+                  <option value="women's clothing">Women's Clothing</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Description *</label>
+              <textarea class="form-input" id="f-description" rows="3" placeholder="Product description" required style="resize:vertical;"></textarea>
+            </div>
+            <div>
+              <label class="form-label">Image URL</label>
+              <input class="form-input" type="url" id="f-image" placeholder="https://..." />
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-3 mt-6">
+            <button type="button" class="btn-secondary" onclick="closeModal()">CANCEL</button>
+            <button type="submit" class="btn-primary" id="formSubmitBtn">SAVE PRODUCT</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
